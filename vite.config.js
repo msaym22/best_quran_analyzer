@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/best_quran_analyzer/',
+  base: '/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets'
