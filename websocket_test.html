@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+        #log { background: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; height: 300px; overflow-y: scroll; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Quran Analyzer Backend Connection Test</h1>
+    
+    <div>
+        <button onclick="testHTTP()">🌐 Test HTTP Connection</button>
+        <button onclick="testWebSocket()">🔌 Test WebSocket</button>
+        <button onclick="testFullFlow()">🎯 Test Full Audio Flow</button>
+        <button onclick="clearLog()">🧹 Clear Log</button>
+    </div>
+    
+    <div id="status" class="status info">Ready to test...</div>
+    <div id="log"></div>
+    
+    <script>
+        const BACKEND_HTTP = 'https://msaym-quran-recitation-analyzer.hf.space';
+        const BACKEND_WS = 'wss://msaym-quran-recitation-analyzer.hf.space/ws';
+        
+        let ws = null;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('log');
+            const statusDiv = document.getElementById('status');
+            
+            const logEntry = `[${timestamp}] ${message}`;
+            logDiv.innerHTML += logEntry + '<br>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared', 'info');
+        }
+        
+        async function testHTTP() {
+            log('🌐 Testing HTTP connection...', 'info');
+            
+            try {
+                // Test root endpoint
+                const rootResponse = await fetch(BACKEND_HTTP + '/');
+                const rootData = await rootResponse.json();
+                log(`✅ Root endpoint: ${rootData.message}`, 'success');
+                
+                // Test health endpoint
+                const healthResponse = await fetch(BACKEND_HTTP + '/health');
+                const healthData = await healthResponse.json();
+                log(`✅ Health check: Status ${healthData.status}, Quran loaded: ${healthData.quran_loaded}`, 'success');
+                
+                log('🎉 HTTP connection successful!', 'success');
+                
+            } catch (error) {
+                log(`❌ HTTP Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function testWebSocket() {
+            log('🔌 Testing WebSocket connection...', 'info');
+            
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            try {
+                ws = new WebSocket(BACKEND_WS);
+                
+                ws.onopen = function(event) {
+                    log('✅ WebSocket connected successfully!', 'success');
+                    
+                    // Send a test configuration message
+                    const testConfig = {
+                        type: 'config',
+                        feedbackMode: 'highlight'
+                    };
+                    ws.send(JSON.stringify(testConfig));
+                    log('📤 Sent test config message', 'info');
+                };
+                
+                ws.onmessage = function(event) {
+                    log(`📥 Received message: ${event.data}`, 'success');
+                };
+                
+                ws.onerror = function(error) {
+                    log(`❌ WebSocket Error: ${error.message || 'Connection failed'}`, 'error');
+                };
+                
+                ws.onclose = function(event) {
+                    log(`🔌 WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`, 'info');
+                };
+                
+                // Timeout test
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        log('⏰ WebSocket connection timeout', 'error');
+                        ws.close();
+                    }
+                }, 10000);
+                
+            } catch (error) {
+                log(`❌ WebSocket Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testFullFlow() {
+            log('🎯 Testing full audio flow...', 'info');
+            
+            // First test HTTP
+            await testHTTP();
+            
+            // Wait a bit
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Then test WebSocket
+            testWebSocket();
+            
+            // Wait for WebSocket connection
+            setTimeout(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    log('🎤 Simulating audio test (no actual audio)...', 'info');
+                    
+                    // Create dummy audio data (empty buffer)
+                    const dummyAudio = new ArrayBuffer(1024);
+                    ws.send(dummyAudio);
+                    log('📤 Sent dummy audio data', 'info');
+                } else {
+                    log('❌ Cannot test audio - WebSocket not connected', 'error');
+                }
+            }, 2000);
+        }
+        
+        // Auto-test on page load
+        window.onload = function() {
+            log('🚀 Page loaded. Click buttons to test connections.', 'info');
+        };
+        
+        // Clean up on page unload
+        window.onbeforeunload = function() {
+            if (ws) {
+                ws.close();
+            }
+        };
+    </script>
+</body>
+</html>
